@@ -313,66 +313,73 @@ static long vflog(FILE* fp, char levelc, const char* timestamp, long threadID,
     int size;
     long totalsize = 0;
 
+    //version with time and thread id log
     if ((size = fprintf(fp, "%c %s %ld %s:%d: ", levelc, timestamp, threadID, file, line)) > 0) {
         totalsize += size;
     }
+    //version withOUT time and thread id log
+    //(void)timestamp;
+    //(void)threadID;
+    //if ((size = fprintf(fp, "%c %s:%d: ", levelc, file, line)) > 0) {
+    //        totalsize += size;
+    //}
     if ((size = vfprintf(fp, fmt, arg)) > 0) {
-        totalsize += size;
+	    totalsize += size;
     }
     if ((size = fprintf(fp, "\n")) > 0) {
-        totalsize += size;
+	    totalsize += size;
     }
     if (s_flushInterval > 0) {
-        if (currentTime - *flushedTime > s_flushInterval) {
-            fflush(fp);
-            *flushedTime = currentTime;
-        }
+	    if (currentTime - *flushedTime > (long long unsigned int) s_flushInterval) {
+		    fflush(fp);
+		    *flushedTime = currentTime;
+	    }
     }
     return totalsize;
 }
 
 void logger_log(LogLevel level, const char* file, int line, const char* fmt, ...)
 {
-    struct timeval now;
-    unsigned long long currentTime; /* milliseconds */
-    char levelc;
-    char timestamp[32];
-    long threadID;
-    va_list carg, farg;
+	struct timeval now;
+	unsigned long long currentTime; /* milliseconds */
+	char levelc;
+	char timestamp[32];
+	long threadID;
+	va_list carg, farg;
 
-    if (s_logger == 0 || !s_initialized) {
-        assert(0 && "logger is not initialized");
-        return;
-    }
+	if (s_logger == 0 || !s_initialized) {
+		assert(0 && "logger is not initialized");
+		return;
+	}
 
-    if (!logger_isEnabled(level)) {
-        return;
-    }
-    gettimeofday(&now, NULL);
-    currentTime = now.tv_sec * 1000 + now.tv_usec / 1000;
-    levelc = getLevelChar(level);
-    getTimestamp(&now, timestamp, sizeof(timestamp));
-    threadID = getCurrentThreadID();
-    lock();
-    if (hasFlag(s_logger, kConsoleLogger)) {
-        va_start(carg, fmt);
-        vflog(s_clog.output, levelc, timestamp, threadID,
-                file, line, fmt, carg, currentTime, &s_clog.flushedTime);
-        va_end(carg);
-    }
-    if (hasFlag(s_logger, kFileLogger)) {
-        if (rotateLogFiles()) {
-            va_start(farg, fmt);
-            s_flog.currentFileSize += vflog(s_flog.output, levelc, timestamp, threadID,
-                    file, line, fmt, farg, currentTime, &s_flog.flushedTime);
-            va_end(farg);
-        }
-    }
-    unlock();
+	if (!logger_isEnabled(level)) {
+		return;
+	}
+	gettimeofday(&now, NULL);
+	currentTime = now.tv_sec * 1000 + now.tv_usec / 1000;
+	levelc = getLevelChar(level);
+	getTimestamp(&now, timestamp, sizeof(timestamp));
+	threadID = getCurrentThreadID();
+	lock();
+	if (hasFlag(s_logger, kConsoleLogger)) {
+		va_start(carg, fmt);
+		vflog(s_clog.output, levelc, timestamp, threadID,
+				file, line, fmt, carg, currentTime, &s_clog.flushedTime);
+		va_end(carg);
+	}
+	if (hasFlag(s_logger, kFileLogger)) {
+		if (rotateLogFiles()) {
+			va_start(farg, fmt);
+			s_flog.currentFileSize += vflog(s_flog.output, levelc, timestamp, threadID,
+					file, line, fmt, farg, currentTime, &s_flog.flushedTime);
+			va_end(farg);
+		}
+	}
+	unlock();
 }
 
 void logger_exitFileLogger()
 {
-    if (s_flog.output)
-        fclose(s_flog.output);
+	if (s_flog.output)
+		fclose(s_flog.output);
 }

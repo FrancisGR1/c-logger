@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required(VERSION 3.16)
 project(logger C)
 
 set(CMAKE_C_FLAGS "-Wall -std=c89")
